@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebRTC Host - Receive Pointer Data</title>
+    <style>
+        #pointer {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: red;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Host: Receive Pointer Data</h1>
+    <div id="pointer"></div>
+    
+    <script>
+        // Create a new RTCPeerConnection
+        const peerConnection = new RTCPeerConnection();
+
+        peerConnection.onicecandidate = event => {
+            if (event.candidate) {
+                // Send the candidate to the client
+                // Replace with actual signaling method (e.g., WebSocket, HTTP)
+                console.log(JSON.stringify(event.candidate));
+            }
+        };
+
+        // Listen for incoming data channels
+        peerConnection.ondatachannel = (event) => {
+            const dataChannel = event.channel;
+
+            dataChannel.onmessage = (event) => {
+                const inputData = JSON.parse(event.data);
+                updatePointer(inputData.x, inputData.y);
+            };
+        };
+
+        // Update the position of the pointer on the screen
+        function updatePointer(x, y) {
+            const pointerElement = document.getElementById('pointer');
+            pointerElement.style.left = `${x}px`;
+            pointerElement.style.top = `${y}px`;
+        }
+
+        // Handle offer/answer exchange (for simplicity, this should be done manually in this example)
+        // Replace this with proper signaling logic in a real-world scenario
+        async function setupConnection() {
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            console.log(JSON.stringify(peerConnection.localDescription));
+
+            // Wait for answer from client (insert answer here manually for the demo)
+            const clientAnswer = {
+                // Insert client answer JSON here
+            };
+            await peerConnection.setRemoteDescription(clientAnswer);
+        }
+
+        setupConnection();
+    </script>
+</body>
+</html>
