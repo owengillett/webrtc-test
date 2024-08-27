@@ -16,17 +16,40 @@
         // Create a data channel for sending click data
         const dataChannel = peerConnection.createDataChannel("clickDataChannel");
 
-        // Set up the connection and signaling (simplified example)
-        // Replace this with your actual signaling mechanism
+        // Handle ICE candidates
         peerConnection.onicecandidate = event => {
             if (event.candidate) {
-                // Send the candidate to the host (signaling step)
-                console.log("New ICE candidate:", event.candidate);
+                // Append ICE candidate to the URL for signaling
+                appendToSignalingUrl("client_ice", btoa(JSON.stringify(event.candidate)));
             }
         };
 
-        // Assuming the signaling is done and peer connection is established
-        // Add a listener for clicks and send the click coordinates
+        // Append signaling data to the URL (used for demonstration purposes)
+        function appendToSignalingUrl(param, value) {
+            const url = new URL(window.location.href);
+            url.searchParams.set(param, value);
+            window.history.replaceState({}, '', url);
+        }
+
+        // Create and send the offer to the signaling URL
+        async function startConnection() {
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            appendToSignalingUrl("offer", btoa(JSON.stringify(offer)));
+        }
+
+        // Wait for the host's answer
+        async function waitForAnswer() {
+            const urlParams = new URLSearchParams(window.location.search);
+            while (!urlParams.has("answer")) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                urlParams.set("answer", new URLSearchParams(window.location.search).get("answer"));
+            }
+            const answer = JSON.parse(atob(urlParams.get("answer")));
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+        }
+
+        // Capture clicks and send coordinates via the data channel
         document.addEventListener('click', (event) => {
             const clickData = {
                 x: event.clientX,
@@ -35,19 +58,8 @@
             dataChannel.send(JSON.stringify(clickData));
         });
 
-        // Assume signaling has completed and we can set the remote description
-        // For a real implementation, replace this with actual signaling code
-        async function startConnection() {
-            // Example: Set remote description (from host)
-            const offer = await peerConnection.createOffer();
-            await peerConnection.setLocalDescription(offer);
-            // Signal the offer to the host
-
-            // Example placeholder for signaling step
-            console.log("Offer created and set as local description");
-        }
-
-        startConnection();
+        // Start the connection
+        startConnection().then(waitForAnswer);
     </script>
 </body>
 </html>
