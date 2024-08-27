@@ -31,7 +31,22 @@
             };
         };
 
-        // Function to spawn a dot at the given coordinates
+        // Handle ICE candidates
+        peerConnection.onicecandidate = event => {
+            if (event.candidate) {
+                // Append ICE candidate to the URL for signaling
+                appendToSignalingUrl("host_ice", btoa(JSON.stringify(event.candidate)));
+            }
+        };
+
+        // Append signaling data to the URL (used for demonstration purposes)
+        function appendToSignalingUrl(param, value) {
+            const url = new URL(window.location.href);
+            url.searchParams.set(param, value);
+            window.history.replaceState({}, '', url);
+        }
+
+        // Spawn a dot at the given coordinates
         function spawnDot(x, y) {
             const dot = document.createElement('div');
             dot.className = 'dot';
@@ -40,28 +55,23 @@
             document.body.appendChild(dot);
         }
 
-        // Example of setting up the peer connection and signaling (simplified)
-        peerConnection.onicecandidate = event => {
-            if (event.candidate) {
-                // Send the candidate to the client (signaling step)
-                console.log("New ICE candidate:", event.candidate);
+        // Wait for the client's offer and respond with an answer
+        async function waitForOffer() {
+            const urlParams = new URLSearchParams(window.location.search);
+            while (!urlParams.has("offer")) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                urlParams.set("offer", new URLSearchParams(window.location.search).get("offer"));
             }
-        };
-
-        // Assume signaling has completed and we can set the remote description
-        async function startConnection() {
-            // Example: Wait for offer from client, then create answer
-            const offer = /* get offer from client via signaling */;
-            await peerConnection.setRemoteDescription(offer);
+            const offer = JSON.parse(atob(urlParams.get("offer")));
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
 
             const answer = await peerConnection.createAnswer();
             await peerConnection.setLocalDescription(answer);
-            // Signal the answer back to the client
-
-            console.log("Answer created and set as local description");
+            appendToSignalingUrl("answer", btoa(JSON.stringify(answer)));
         }
 
-        startConnection();
+        // Start waiting for the client's offer
+        waitForOffer();
     </script>
 </body>
 </html>
