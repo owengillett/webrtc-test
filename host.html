@@ -3,66 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebRTC Host - Receive Pointer Data</title>
+    <title>WebRTC Host</title>
     <style>
-        #pointer {
+        .dot {
             position: absolute;
             width: 10px;
             height: 10px;
             background-color: red;
             border-radius: 50%;
-            pointer-events: none;
         }
     </style>
 </head>
 <body>
-    <h1>Host: Receive Pointer Data</h1>
-    <div id="pointer"></div>
-    
+    <h1>WebRTC Host</h1>
+    <p>Dots will appear where the client clicks.</p>
+
     <script>
         // Create a new RTCPeerConnection
         const peerConnection = new RTCPeerConnection();
 
+        // Handle the data channel for receiving click data
+        peerConnection.ondatachannel = (event) => {
+            const dataChannel = event.channel;
+            dataChannel.onmessage = (event) => {
+                const clickData = JSON.parse(event.data);
+                spawnDot(clickData.x, clickData.y);
+            };
+        };
+
+        // Function to spawn a dot at the given coordinates
+        function spawnDot(x, y) {
+            const dot = document.createElement('div');
+            dot.className = 'dot';
+            dot.style.left = `${x}px`;
+            dot.style.top = `${y}px`;
+            document.body.appendChild(dot);
+        }
+
+        // Example of setting up the peer connection and signaling (simplified)
         peerConnection.onicecandidate = event => {
             if (event.candidate) {
-                // Send the candidate to the client
-                // Replace with actual signaling method (e.g., WebSocket, HTTP)
-                console.log(JSON.stringify(event.candidate));
+                // Send the candidate to the client (signaling step)
+                console.log("New ICE candidate:", event.candidate);
             }
         };
 
-        // Listen for incoming data channels
-        peerConnection.ondatachannel = (event) => {
-            const dataChannel = event.channel;
+        // Assume signaling has completed and we can set the remote description
+        async function startConnection() {
+            // Example: Wait for offer from client, then create answer
+            const offer = /* get offer from client via signaling */;
+            await peerConnection.setRemoteDescription(offer);
 
-            dataChannel.onmessage = (event) => {
-                const inputData = JSON.parse(event.data);
-                updatePointer(inputData.x, inputData.y);
-            };
-        };
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            // Signal the answer back to the client
 
-        // Update the position of the pointer on the screen
-        function updatePointer(x, y) {
-            const pointerElement = document.getElementById('pointer');
-            pointerElement.style.left = `${x}px`;
-            pointerElement.style.top = `${y}px`;
+            console.log("Answer created and set as local description");
         }
 
-        // Handle offer/answer exchange (for simplicity, this should be done manually in this example)
-        // Replace this with proper signaling logic in a real-world scenario
-        async function setupConnection() {
-            const offer = await peerConnection.createOffer();
-            await peerConnection.setLocalDescription(offer);
-            console.log(JSON.stringify(peerConnection.localDescription));
-
-            // Wait for answer from client (insert answer here manually for the demo)
-            const clientAnswer = {
-                // Insert client answer JSON here
-            };
-            await peerConnection.setRemoteDescription(clientAnswer);
-        }
-
-        setupConnection();
+        startConnection();
     </script>
 </body>
 </html>
