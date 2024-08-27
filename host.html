@@ -5,73 +5,70 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebRTC Host</title>
     <style>
-        .dot {
-            position: absolute;
-            width: 10px;
-            height: 10px;
-            background-color: red;
-            border-radius: 50%;
-        }
+        body { margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        #hostArea { width: 100vw; height: 100vh; background-color: white; position: relative; }
+        .dot { position: absolute; width: 10px; height: 10px; background-color: red; border-radius: 50%; }
     </style>
 </head>
 <body>
-    <h1>WebRTC Host</h1>
-    <p>Dots will appear where the client clicks.</p>
+    <div id="hostArea"></div>
 
     <script>
-        // Create a new RTCPeerConnection
-        const peerConnection = new RTCPeerConnection();
+        let remoteConnection;
+        let receiveChannel;
 
-        // Handle the data channel for receiving click data
-        peerConnection.ondatachannel = (event) => {
-            const dataChannel = event.channel;
-            dataChannel.onmessage = (event) => {
-                const clickData = JSON.parse(event.data);
-                spawnDot(clickData.x, clickData.y);
-            };
+        // Create WebRTC connection on page load
+        window.onload = () => {
+            createConnection();
         };
 
-        // Handle ICE candidates
-        peerConnection.onicecandidate = event => {
-            if (event.candidate) {
-                // Append ICE candidate to the URL for signaling
-                appendToSignalingUrl("host_ice", btoa(JSON.stringify(event.candidate)));
-            }
-        };
+        function createConnection() {
+            const servers = null;
 
-        // Append signaling data to the URL (used for demonstration purposes)
-        function appendToSignalingUrl(param, value) {
-            const url = new URL(window.location.href);
-            url.searchParams.set(param, value);
-            window.history.replaceState({}, '', url);
+            // Setup the remote peer connection
+            remoteConnection = new RTCPeerConnection(servers);
+            remoteConnection.onicecandidate = e => onIceCandidate(remoteConnection, e);
+
+            // Setup the data channel for receiving data
+            remoteConnection.ondatachannel = receiveChannelCallback;
+
+            // Create offer and set local and remote descriptions
+            remoteConnection.createOffer().then(desc => {
+                remoteConnection.setLocalDescription(desc);
+                localConnection.setRemoteDescription(desc);
+                localConnection.createAnswer().then(answerDesc => {
+                    localConnection.setLocalDescription(answerDesc);
+                    remoteConnection.setRemoteDescription(answerDesc);
+                });
+            });
+
+            // Setup the local connection (for signaling purpose in the same page)
+            window.localConnection = localConnection = new RTCPeerConnection(servers);
+            localConnection.onicecandidate = e => onIceCandidate(localConnection, e);
         }
 
-        // Spawn a dot at the given coordinates
+        function receiveChannelCallback(event) {
+            receiveChannel = event.channel;
+            receiveChannel.onmessage = onReceiveMessage;
+        }
+
+        function onReceiveMessage(event) {
+            const clickData = JSON.parse(event.data);
+            spawnDot(clickData.x, clickData.y);
+        }
+
         function spawnDot(x, y) {
             const dot = document.createElement('div');
             dot.className = 'dot';
             dot.style.left = `${x}px`;
             dot.style.top = `${y}px`;
-            document.body.appendChild(dot);
+            document.getElementById('hostArea').appendChild(dot);
         }
 
-        // Wait for the client's offer and respond with an answer
-        async function waitForOffer() {
-            const urlParams = new URLSearchParams(window.location.search);
-            while (!urlParams.has("offer")) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                urlParams.set("offer", new URLSearchParams(window.location.search).get("offer"));
-            }
-            const offer = JSON.parse(atob(urlParams.get("offer")));
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-
-            const answer = await peerConnection.createAnswer();
-            await peerConnection.setLocalDescription(answer);
-            appendToSignalingUrl("answer", btoa(JSON.stringify(answer)));
+        function onIceCandidate(pc, event) {
+            const otherPc = (pc === remoteConnection) ? localConnection : remoteConnection;
+            otherPc.addIceCandidate(event.candidate);
         }
-
-        // Start waiting for the client's offer
-        waitForOffer();
     </script>
 </body>
 </html>
