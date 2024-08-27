@@ -4,62 +4,63 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebRTC Client</title>
+    <style>
+        body { margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        #clickArea { width: 100vw; height: 100vh; background-color: lightgray; cursor: crosshair; }
+    </style>
 </head>
 <body>
-    <h1>WebRTC Client</h1>
-    <p>Click anywhere on the screen to send the click to the host.</p>
+    <div id="clickArea"></div>
 
     <script>
-        // Create a new RTCPeerConnection
-        const peerConnection = new RTCPeerConnection();
+        let localConnection;
+        let sendChannel;
 
-        // Create a data channel for sending click data
-        const dataChannel = peerConnection.createDataChannel("clickDataChannel");
-
-        // Handle ICE candidates
-        peerConnection.onicecandidate = event => {
-            if (event.candidate) {
-                // Append ICE candidate to the URL for signaling
-                appendToSignalingUrl("client_ice", btoa(JSON.stringify(event.candidate)));
-            }
+        // Create WebRTC connection on page load
+        window.onload = () => {
+            createConnection();
         };
 
-        // Append signaling data to the URL (used for demonstration purposes)
-        function appendToSignalingUrl(param, value) {
-            const url = new URL(window.location.href);
-            url.searchParams.set(param, value);
-            window.history.replaceState({}, '', url);
+        function createConnection() {
+            const servers = null;
+
+            // Setup the local peer connection and data channel
+            localConnection = new RTCPeerConnection(servers);
+            sendChannel = localConnection.createDataChannel('clickDataChannel');
+
+            // Handle ICE candidates
+            localConnection.onicecandidate = e => onIceCandidate(localConnection, e);
+
+            // Create offer and set local and remote descriptions
+            localConnection.createOffer().then(desc => {
+                localConnection.setLocalDescription(desc);
+                remoteConnection.setRemoteDescription(desc);
+                remoteConnection.createAnswer().then(answerDesc => {
+                    remoteConnection.setLocalDescription(answerDesc);
+                    localConnection.setRemoteDescription(answerDesc);
+                });
+            });
+
+            // Setup the remote connection (for signaling purpose in the same page)
+            window.remoteConnection = remoteConnection = new RTCPeerConnection(servers);
+            remoteConnection.onicecandidate = e => onIceCandidate(remoteConnection, e);
+
+            // Listen for clicks on the click area
+            document.getElementById('clickArea').addEventListener('click', sendClick);
         }
 
-        // Create and send the offer to the signaling URL
-        async function startConnection() {
-            const offer = await peerConnection.createOffer();
-            await peerConnection.setLocalDescription(offer);
-            appendToSignalingUrl("offer", btoa(JSON.stringify(offer)));
-        }
-
-        // Wait for the host's answer
-        async function waitForAnswer() {
-            const urlParams = new URLSearchParams(window.location.search);
-            while (!urlParams.has("answer")) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                urlParams.set("answer", new URLSearchParams(window.location.search).get("answer"));
-            }
-            const answer = JSON.parse(atob(urlParams.get("answer")));
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-        }
-
-        // Capture clicks and send coordinates via the data channel
-        document.addEventListener('click', (event) => {
+        function sendClick(event) {
             const clickData = {
                 x: event.clientX,
                 y: event.clientY
             };
-            dataChannel.send(JSON.stringify(clickData));
-        });
+            sendChannel.send(JSON.stringify(clickData));
+        }
 
-        // Start the connection
-        startConnection().then(waitForAnswer);
+        function onIceCandidate(pc, event) {
+            const otherPc = (pc === localConnection) ? remoteConnection : localConnection;
+            otherPc.addIceCandidate(event.candidate);
+        }
     </script>
 </body>
 </html>
