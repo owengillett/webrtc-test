@@ -3,51 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebRTC Client - Send Pointer Data</title>
+    <title>WebRTC Client</title>
 </head>
 <body>
-    <h1>Client: Send Pointer Data</h1>
-    <p>Move your mouse over this page to send pointer data to the host.</p>
-    
+    <h1>WebRTC Client</h1>
+    <p>Click anywhere on the screen to send the click to the host.</p>
+
     <script>
         // Create a new RTCPeerConnection
         const peerConnection = new RTCPeerConnection();
-        const dataChannel = peerConnection.createDataChannel("inputDataChannel");
 
-        // Signal the connection to the host
-        // This should be done via a signaling server or similar in a real application
+        // Create a data channel for sending click data
+        const dataChannel = peerConnection.createDataChannel("clickDataChannel");
+
+        // Set up the connection and signaling (simplified example)
+        // Replace this with your actual signaling mechanism
         peerConnection.onicecandidate = event => {
             if (event.candidate) {
-                // Send the candidate to the host
-                // Replace with actual signaling method (e.g., WebSocket, HTTP)
-                console.log(JSON.stringify(event.candidate));
+                // Send the candidate to the host (signaling step)
+                console.log("New ICE candidate:", event.candidate);
             }
         };
 
-        // Capture mouse movement and send the coordinates
-        document.addEventListener('mousemove', (event) => {
-            const inputData = {
+        // Assuming the signaling is done and peer connection is established
+        // Add a listener for clicks and send the click coordinates
+        document.addEventListener('click', (event) => {
+            const clickData = {
                 x: event.clientX,
                 y: event.clientY
             };
-            dataChannel.send(JSON.stringify(inputData));
+            dataChannel.send(JSON.stringify(clickData));
         });
 
-        // Handle offer/answer exchange (for simplicity, this should be done manually in this example)
-        // Replace this with proper signaling logic in a real-world scenario
-        async function setupConnection(offer) {
-            await peerConnection.setRemoteDescription(offer);
-            const answer = await peerConnection.createAnswer();
-            await peerConnection.setLocalDescription(answer);
-            console.log(JSON.stringify(peerConnection.localDescription));
+        // Assume signaling has completed and we can set the remote description
+        // For a real implementation, replace this with actual signaling code
+        async function startConnection() {
+            // Example: Set remote description (from host)
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            // Signal the offer to the host
+
+            // Example placeholder for signaling step
+            console.log("Offer created and set as local description");
         }
 
-        // Example to manually set up connection (replace with actual signaling)
-        // Paste the offer from the host here:
-        const hostOffer = {
-            // Insert host offer JSON here
-        };
-        setupConnection(hostOffer);
+        startConnection();
     </script>
 </body>
 </html>
