@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebRTC Client - Send Pointer Data</title>
+</head>
+<body>
+    <h1>Client: Send Pointer Data</h1>
+    <p>Move your mouse over this page to send pointer data to the host.</p>
+    
+    <script>
+        // Create a new RTCPeerConnection
+        const peerConnection = new RTCPeerConnection();
+        const dataChannel = peerConnection.createDataChannel("inputDataChannel");
+
+        // Signal the connection to the host
+        // This should be done via a signaling server or similar in a real application
+        peerConnection.onicecandidate = event => {
+            if (event.candidate) {
+                // Send the candidate to the host
+                // Replace with actual signaling method (e.g., WebSocket, HTTP)
+                console.log(JSON.stringify(event.candidate));
+            }
+        };
+
+        // Capture mouse movement and send the coordinates
+        document.addEventListener('mousemove', (event) => {
+            const inputData = {
+                x: event.clientX,
+                y: event.clientY
+            };
+            dataChannel.send(JSON.stringify(inputData));
+        });
+
+        // Handle offer/answer exchange (for simplicity, this should be done manually in this example)
+        // Replace this with proper signaling logic in a real-world scenario
+        async function setupConnection(offer) {
+            await peerConnection.setRemoteDescription(offer);
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            console.log(JSON.stringify(peerConnection.localDescription));
+        }
+
+        // Example to manually set up connection (replace with actual signaling)
+        // Paste the offer from the host here:
+        const hostOffer = {
+            // Insert host offer JSON here
+        };
+        setupConnection(hostOffer);
+    </script>
+</body>
+</html>
